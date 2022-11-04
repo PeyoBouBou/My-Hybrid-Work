@@ -1,0 +1,369 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_adobesign": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_adobesign"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "PowerApp",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "Requestor_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "Requestoremail_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "PlaceOfBirth_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "ModeOfTransport_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "FirstName_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "LastName_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "DateOfBirth_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "HomeAddress_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "JobTitle_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "JobLocation_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                }
+              },
+              "required": [
+                "Requestor_Value",
+                "Requestoremail_Value",
+                "PlaceOfBirth_Value",
+                "ModeOfTransport_Value",
+                "FirstName_Value",
+                "LastName_Value",
+                "DateOfBirth_Value",
+                "HomeAddress_Value",
+                "JobTitle_Value",
+                "JobLocation_Value"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Valid_Period": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Valid Period",
+                "type": "string",
+                "value": "Du @{formatDateTime(utcNow(), 'dd-MM-yyyy')} jusqu'à l'expiration des mesures de couvre-feu"
+              }
+            ]
+          }
+        },
+        "Requestor": {
+          "runAfter": {
+            "Valid_Period": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Requestor",
+                "type": "string",
+                "value": "@triggerBody()['Requestor_Value']"
+              }
+            ]
+          }
+        },
+        "Requestor_email": {
+          "runAfter": {
+            "Requestor": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Requestor Email",
+                "type": "string",
+                "value": "@triggerBody()['Requestoremail_Value']"
+              }
+            ]
+          }
+        },
+        "Create_an_agreement_from_a_library_template_and_send_for_signature": {
+          "runAfter": {
+            "JobLocation": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_adobesign",
+              "operationId": "CreateAgreementByTemplate_V2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_adobesign"
+            },
+            "parameters": {
+              "AgreementCreationInfoTemplateV6/name": "France COVID Business Travel approval",
+              "AgreementCreationInfoTemplateV6/fileInfos": [
+                {
+                  "libraryDocumentId": "CBJCHBCAABAABPFO4VSi24NeJ2-BhpDGKr0IRP9Tf6vx"
+                }
+              ],
+              "AgreementCreationInfoTemplateV6/signatureType": "ESIGN",
+              "AgreementCreationInfoTemplateV6/participantSetsInfo": [
+                {
+                  "memberInfos": [
+                    {
+                      "email": "nicolask@microsoft.com"
+                    }
+                  ],
+                  "order": 1,
+                  "role": "SIGNER"
+                }
+              ],
+              "AgreementCreationInfoTemplateV6/message": "Please review and sign this document",
+              "AgreementCreationInfoTemplateV6/reminderFrequency": "DAILY_UNTIL_SIGNED",
+              "AgreementCreationInfoTemplateV6/mergeFieldInfo": [
+                {
+                  "fieldName": "Name",
+                  "defaultValue": "@variables('LastName')"
+                },
+                {
+                  "fieldName": "FirstName",
+                  "defaultValue": "@variables('FirstName')"
+                },
+                {
+                  "fieldName": "DoB",
+                  "defaultValue": "@variables('DateOfBirth')"
+                },
+                {
+                  "fieldName": "BirthPlace",
+                  "defaultValue": "@variables('PlaceOfBirth')"
+                },
+                {
+                  "fieldName": "HomeAddress",
+                  "defaultValue": "@variables('HomeAddress')"
+                },
+                {
+                  "fieldName": "NatureOfWork",
+                  "defaultValue": "@variables('JobTitle')"
+                },
+                {
+                  "fieldName": "PlaceofWork",
+                  "defaultValue": "@variables('JobLocation')"
+                },
+                {
+                  "fieldName": "ModeofTransport",
+                  "defaultValue": "@variables('ModeOfTransport')"
+                },
+                {
+                  "fieldName": "Validity",
+                  "defaultValue": "@variables('Valid Period')"
+                }
+              ]
+            },
+            "authentication": {
+              "type": "Raw",
+              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+            }
+          }
+        },
+        "PlaceOfBirth": {
+          "runAfter": {
+            "Requestor_email": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "PlaceOfBirth",
+                "type": "string",
+                "value": "@triggerBody()['PlaceOfBirth_Value']"
+              }
+            ]
+          }
+        },
+        "ModeOfTransport": {
+          "runAfter": {
+            "PlaceOfBirth": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "ModeOfTransport",
+                "type": "string",
+                "value": "@triggerBody()['ModeOfTransport_Value']"
+              }
+            ]
+          }
+        },
+        "FirstName": {
+          "runAfter": {
+            "ModeOfTransport": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "FirstName",
+                "type": "string",
+                "value": "@triggerBody()['FirstName_Value']"
+              }
+            ]
+          }
+        },
+        "LastName": {
+          "runAfter": {
+            "FirstName": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "LastName",
+                "type": "string",
+                "value": "@triggerBody()['LastName_Value']"
+              }
+            ]
+          }
+        },
+        "DateOfBirth": {
+          "runAfter": {
+            "LastName": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "DateOfBirth",
+                "type": "string",
+                "value": "@triggerBody()['DateOfBirth_Value']"
+              }
+            ]
+          }
+        },
+        "HomeAddress": {
+          "runAfter": {
+            "DateOfBirth": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "HomeAddress",
+                "type": "string",
+                "value": "@triggerBody()['HomeAddress_Value']"
+              }
+            ]
+          }
+        },
+        "JobTitle": {
+          "runAfter": {
+            "HomeAddress": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "JobTitle",
+                "type": "string",
+                "value": "@triggerBody()['JobTitle_Value']"
+              }
+            ]
+          }
+        },
+        "JobLocation": {
+          "runAfter": {
+            "JobTitle": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "JobLocation",
+                "type": "string",
+                "value": "@triggerBody()['JobLocation_Value']"
+              }
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

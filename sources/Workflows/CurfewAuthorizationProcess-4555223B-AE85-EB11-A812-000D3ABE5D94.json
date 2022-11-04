@@ -1,0 +1,230 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_wordonlinebusiness_1": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_wordonlinebusiness"
+        }
+      },
+      "shared_office365_1": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_office365"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "PowerApp",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "WordTemplate_Placeofbirth": {
+                  "type": "string",
+                  "description": "Place of birth",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "WordTemplate_Vehicule": {
+                  "type": "string",
+                  "description": "Vehicule",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "WordTemplate_FirstName": {
+                  "type": "string",
+                  "description": "First Name",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "WordTemplate_LastName": {
+                  "type": "string",
+                  "description": "Last Name",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "WordTemplate_BirthDate": {
+                  "type": "string",
+                  "description": "Birth Date",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "WordTemplate_Address": {
+                  "type": "string",
+                  "description": "Address",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "WordTemplate_JobTitle": {
+                  "type": "string",
+                  "description": "Job Title",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "WordTemplate_Joblocation": {
+                  "type": "string",
+                  "description": "Job location",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "Requestor_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "RequestorEmail_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                }
+              },
+              "required": [
+                "WordTemplate_Placeofbirth",
+                "WordTemplate_Vehicule",
+                "WordTemplate_FirstName",
+                "WordTemplate_LastName",
+                "WordTemplate_BirthDate",
+                "WordTemplate_Address",
+                "WordTemplate_JobTitle",
+                "WordTemplate_Joblocation",
+                "Requestor_Value",
+                "RequestorEmail_Value"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Word_Template": {
+          "runAfter": {
+            "Requestor_Email": [
+              "Succeeded"
+            ]
+          },
+          "metadata": {
+            "01SWBOFE6X6GYL6BDPJBBYQIOUK6EQEYMF": "/MS Initiatives/FrCovid/justificatifdeplacementprofessionnel.docx",
+            "01AYEROGSBYKEISRNE35EIKYIUEMWBH6GV": "/Apps/Yammer/justificatifdeplacementprofessionnel.docx"
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_wordonlinebusiness_1",
+              "operationId": "CreateFileItem",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_wordonlinebusiness"
+            },
+            "parameters": {
+              "source": "https://microsofteur.sharepoint.com/teams/covid-19infranceemployeefaq",
+              "drive": "b!vBdlpo3LMUavM27L2TJFKxCikwyLiepHiFDi_Snil56l48O0RnuuQpCLOg9ySgFr",
+              "file": "01AYEROGSBYKEISRNE35EIKYIUEMWBH6GV",
+              "dynamicFileSchema/194980226": "@triggerBody()['WordTemplate_Placeofbirth']",
+              "dynamicFileSchema/746694742": "@formatDateTime(utcNow(), 'dd-MM-yyyy')",
+              "dynamicFileSchema/805204153": "@variables('Valid Period')",
+              "dynamicFileSchema/1174156612": "@triggerBody()['WordTemplate_Vehicule']",
+              "dynamicFileSchema/1696040963": "@triggerBody()['WordTemplate_FirstName']",
+              "dynamicFileSchema/1978954016": "@triggerBody()['WordTemplate_LastName']",
+              "dynamicFileSchema/-2108038785": "@triggerBody()['WordTemplate_BirthDate']",
+              "dynamicFileSchema/-1515535366": "@triggerBody()['WordTemplate_Address']",
+              "dynamicFileSchema/-278491676": "@triggerBody()['WordTemplate_JobTitle']",
+              "dynamicFileSchema/-592624517": "@triggerBody()['WordTemplate_Joblocation']"
+            },
+            "authentication": {
+              "type": "Raw",
+              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+            }
+          }
+        },
+        "Send_an_email_(V2)": {
+          "runAfter": {
+            "Word_Template": [
+              "Succeeded"
+            ]
+          },
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_office365_1",
+              "operationId": "SendEmailV2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+            },
+            "parameters": {
+              "emailMessage/To": "askhr@microsoft.com",
+              "emailMessage/Subject": "Demande attestation de déplacement couvre feu",
+              "emailMessage/Body": "<p>Bonjour,<br>\n<br>\nVous trouverez ci-joint une demande d'attestation de déplacement pour le couvre feu (pour @{variables('Requestor')})<br>\n<br>\nCordialement,<br>\nL'équipe Hybrid Workplace<br>\nCet email a été automatiquement généré depuis l'application \"Fr Hybrid Work\"</p>",
+              "emailMessage/Cc": "@variables('Requestor Email')",
+              "emailMessage/Attachments": [
+                {
+                  "Name": "Attestation-@{variables('Requestor')}.docx",
+                  "ContentBytes": "@outputs('Word_Template')?['body']"
+                }
+              ]
+            },
+            "authentication": {
+              "type": "Raw",
+              "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+            }
+          }
+        },
+        "Requestor": {
+          "runAfter": {
+            "Valid_Period": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Requestor",
+                "type": "string",
+                "value": "@triggerBody()['Requestor_Value']"
+              }
+            ]
+          }
+        },
+        "Valid_Period": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Valid Period",
+                "type": "string",
+                "value": "Du @{formatDateTime(utcNow(), 'dd-MM-yyyy')} jusqu'à l'expiration des mesures de couvre-feu"
+              }
+            ]
+          }
+        },
+        "Requestor_Email": {
+          "runAfter": {
+            "Requestor": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Requestor Email",
+                "type": "string",
+                "value": "@triggerBody()['RequestorEmail_Value']"
+              }
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

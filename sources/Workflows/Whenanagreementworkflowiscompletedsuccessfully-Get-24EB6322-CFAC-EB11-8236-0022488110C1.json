@@ -1,0 +1,71 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_adobesign": {
+        "runtimeSource": "embedded",
+        "connection": {
+          "connectionReferenceLogicalName": "frmsapde_sharedadobesign_b8cf8"
+        },
+        "api": {
+          "name": "shared_adobesign"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "When_an_agreement_workflow_is_completed_successfully": {
+          "type": "OpenApiConnectionWebhook",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_adobesign",
+              "operationId": "CreateWebhookForAgreementSignedEvent",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_adobesign"
+            },
+            "parameters": {
+              "WebhookCreationInfo/name": "Covid Fr authorization signed",
+              "WebhookCreationInfo/scope": "A specific agreement",
+              "WebhookCreationInfo/resourceId": "3AAABLblqZhDgx2dKvOge_KMyg4Oluk2UNS-3xvlg0OIMxCKyApT6EmhOLIuBWRwPCuQXrtTbnV-Hw8tLhuqHAkNuKHPCuE_X",
+              "WebhookCreationInfo/webhookConditionalParams/webhookAgreementEvents/includeDetailedInfo": true,
+              "WebhookCreationInfo/webhookConditionalParams/webhookAgreementEvents/includeParticipantsInfo": true,
+              "WebhookCreationInfo/webhookConditionalParams/webhookAgreementEvents/includeDocumentsInfo": true,
+              "WebhookCreationInfo/webhookConditionalParams/webhookAgreementEvents/includeSignedDocuments": true
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "actions": {
+        "Get_form_field_data_of_agreement": {
+          "runAfter": {},
+          "type": "OpenApiConnection",
+          "inputs": {
+            "host": {
+              "connectionName": "shared_adobesign",
+              "operationId": "GetAgreementFormFieldData_V2",
+              "apiId": "/providers/Microsoft.PowerApps/apis/shared_adobesign"
+            },
+            "parameters": {
+              "agreementId": "@triggerOutputs()?['body/agreement/id']"
+            },
+            "authentication": "@parameters('$authentication')"
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

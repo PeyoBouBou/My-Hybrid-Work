@@ -1,0 +1,544 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_approvals_1": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_approvals"
+        }
+      },
+      "shared_office365_1": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_office365users": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_office365users"
+        }
+      },
+      "shared_flowpush_1": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_flowpush"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "PowerAppV2",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "boolean": {
+                  "title": "Sanitary rules",
+                  "type": "boolean",
+                  "x-ms-dynamically-added": true,
+                  "description": "Are Sanitary rules applied ? ",
+                  "x-ms-content-hint": "BOOLEAN"
+                },
+                "email": {
+                  "title": "Requestor",
+                  "type": "string",
+                  "format": "email",
+                  "x-ms-dynamically-added": true,
+                  "description": "UPN of the requestor (email)",
+                  "x-ms-content-hint": "EMAIL"
+                },
+                "text": {
+                  "title": "Reason",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "Reason for the request",
+                  "x-ms-content-hint": "TEXT"
+                },
+                "text_1": {
+                  "title": "Approval Type",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "Type  of the approval (depending on the type of visit requested)",
+                  "x-ms-content-hint": "TEXT"
+                },
+                "date": {
+                  "title": "Visit Date",
+                  "type": "string",
+                  "format": "date",
+                  "x-ms-dynamically-added": true,
+                  "description": "Please enter or select a date (YYYY-MM-DD)",
+                  "x-ms-content-hint": "DATE"
+                },
+                "text_2": {
+                  "title": "Justification",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "Justification of the visit",
+                  "x-ms-content-hint": "TEXT"
+                },
+                "email_1": {
+                  "title": "Approval Manager",
+                  "type": "string",
+                  "format": "email",
+                  "x-ms-dynamically-added": true,
+                  "description": "The email address of the manager that needs to approve the request",
+                  "x-ms-content-hint": "EMAIL"
+                },
+                "text_3": {
+                  "title": "Approval ID",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "The ID of the approval",
+                  "x-ms-content-hint": "TEXT"
+                }
+              },
+              "required": [
+                "boolean",
+                "email",
+                "text",
+                "text_1",
+                "date",
+                "text_2",
+                "email_1",
+                "text_3"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Approval_Type": {
+          "runAfter": {
+            "Reason": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Approval Type",
+                "type": "string",
+                "value": "@triggerBody()['text_1']"
+              }
+            ]
+          }
+        },
+        "Approval_Manager": {
+          "runAfter": {
+            "Justification": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Approval Manager",
+                "type": "string",
+                "value": "@triggerBody()['email_1']"
+              }
+            ]
+          },
+          "description": "Expecting an email to assign the approval to"
+        },
+        "Try": {
+          "actions": {
+            "Wait_for_an_approval": {
+              "runAfter": {
+                "Switch": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnectionWebhook",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_approvals_1",
+                  "operationId": "WaitForAnApproval",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+                },
+                "parameters": {
+                  "approvalName": "@variables('Approval ID')"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Condition": {
+              "actions": {
+                "Apply_to_each": {
+                  "foreach": "@outputs('Wait_for_an_approval')?['body/responses']",
+                  "actions": {
+                    "Send_an_email_(V2)": {
+                      "runAfter": {},
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_office365_1",
+                          "operationId": "SendEmailV2",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                        },
+                        "parameters": {
+                          "emailMessage/To": "@variables('Requestor')",
+                          "emailMessage/Subject": "✅ [HYBRID WORK] - Request approved",
+                          "emailMessage/Body": "<p>&lt;html&gt;<br>\n&lt;body&gt;<br>\n&lt;div style=\"text-align: center; font-family: Segoe UI,Frutiger,Frutiger Linotype,Dejavu Sans,Helvetica Neue,Arial,sans-serif;\"&gt;<br>\n&lt;h3&gt;This is your one-day certificate of entry to Microsoft facilities<br>\n&lt;/h3&gt;<br>\n&lt;img src=\"https://frhybridwork.blob.core.windows.net/images/approved.png\" alt=\"certificateimage\" width=\"123\" height=\"158\"&gt;<br>\n&lt;h1&gt; @{variables('Visit Date')} &lt;/h1&gt;<br>\n&lt;p style=\"margin-bottom:0px\"&gt;Certificate ID: @{outputs('Wait_for_an_approval')?['body/name']}&lt;br&gt;&lt;/p&gt;<br>\n&lt;p style=\"margin-top:0px\"&gt;Date &amp;amp; Time: @{outputs('Wait_for_an_approval')?['body/completionDate']}&lt;br&gt;&lt;/p&gt;<br>\n&lt;p&gt; @{items('Apply_to_each')?['responder/displayName']}has approved your request to ,@{outputs('Wait_for_an_approval')?['body/title']}<br>\n&lt;br&gt;&lt;/p&gt;<br>\n&lt;p&gt;&lt;strong&gt;Justification :&lt;/strong&gt; &lt;@{variables('Justification')}br&gt;&lt;/p&gt;<br>\n&lt;p&gt;&lt;strong&gt;Comments: &lt;/strong&gt;&lt;@{items('Apply_to_each')?['comments']}br&gt;&lt;/p&gt;<br>\n&lt;p&gt;Please be ready to show this certificate today if requested.&lt;br&gt;&lt;/p&gt;<br>\n<br>\n&lt;p&gt;Important:<br>\n&nbsp;&nbsp;&nbsp;This certificate is only valid for the calendar date indicated.<br>\nIf you have questions or concerns about facility access with this certificate, please contact your manager or the HR team&lt;br&gt;&lt;/p&gt;<br>\n<br>\n&lt;/div&gt;<br>\n&lt;/html&gt;</p>",
+                          "emailMessage/Cc": "@{variables('Approval Manager')};@{items('Apply_to_each')?['responder/email']}; @{outputs('Get_manager_(V2)')?['body/userPrincipalName']}",
+                          "emailMessage/Importance": "High"
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    }
+                  },
+                  "runAfter": {},
+                  "type": "Foreach"
+                }
+              },
+              "runAfter": {
+                "Wait_for_an_approval": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Apply_to_each_2": {
+                    "foreach": "@outputs('Wait_for_an_approval')?['body/responses']",
+                    "actions": {
+                      "Send_an_email_(V2)_2": {
+                        "runAfter": {},
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "connectionName": "shared_office365_1",
+                            "operationId": "SendEmailV2",
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                          },
+                          "parameters": {
+                            "emailMessage/To": "@variables('Requestor')",
+                            "emailMessage/Subject": "⛔ [HYBRID WORK] - Request rejected",
+                            "emailMessage/Body": "<h3>Your request to @{outputs('Wait_for_an_approval')?['body/title']} on the @{variables('Visit Date')} was rejected by @{items('Apply_to_each_2')?['responder/displayName']}</h3>\n<p><strong>Comments: </strong>@{items('Apply_to_each_2')?['comments']}br&gt;</p>\n<p>Important: If you have questions or concerns, please contact your manager or the HR team<br>\n</p>",
+                            "emailMessage/Cc": "@{variables('Approval Manager')};@{items('Apply_to_each_2')?['responder/email']}; @{outputs('Get_manager_(V2)')?['body/userPrincipalName']}",
+                            "emailMessage/Importance": "High"
+                          },
+                          "authentication": "@parameters('$authentication')"
+                        }
+                      }
+                    },
+                    "runAfter": {},
+                    "type": "Foreach"
+                  }
+                }
+              },
+              "expression": {
+                "equals": [
+                  "@outputs('Wait_for_an_approval')?['body/outcome']",
+                  "Approve"
+                ]
+              },
+              "type": "If"
+            },
+            "Get_manager_(V2)": {
+              "runAfter": {},
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_office365users",
+                  "operationId": "Manager_V2",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365users"
+                },
+                "parameters": {
+                  "id": "@variables('Requestor')"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Switch": {
+              "runAfter": {
+                "Get_manager_(V2)": [
+                  "Succeeded"
+                ]
+              },
+              "cases": {
+                "Office": {
+                  "case": "Campus",
+                  "actions": {
+                    "Office_Approval": {
+                      "runAfter": {},
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_approvals_1",
+                          "operationId": "CreateAnApproval",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+                        },
+                        "parameters": {
+                          "approvalType": "Basic",
+                          "ApprovalCreationInput/title": "Work in the office",
+                          "ApprovalCreationInput/assignedTo": "@{variables('Approval Manager')}; @{outputs('Get_manager_(V2)')?['body/userPrincipalName']};",
+                          "ApprovalCreationInput/details": "Visit date :  @{variables('Visit Date')}\n\nJustification : @{variables('Justification')}\n\nReason : @{variables('Reason')}\n",
+                          "ApprovalCreationInput/enableNotifications": true,
+                          "ApprovalCreationInput/enableReassignment": true
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "Set_approval_ID_to_Office": {
+                      "runAfter": {
+                        "Office_Approval": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "Approval ID",
+                        "value": "@outputs('Office_Approval')?['body/name']"
+                      }
+                    }
+                  }
+                },
+                "Customer_visit_-_Sales_": {
+                  "case": "Sales",
+                  "actions": {
+                    "Customer_sales_approval": {
+                      "runAfter": {},
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_approvals_1",
+                          "operationId": "CreateAnApproval",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+                        },
+                        "parameters": {
+                          "approvalType": "Basic",
+                          "ApprovalCreationInput/title": "Visit a customer or partner (non consulting)",
+                          "ApprovalCreationInput/assignedTo": "@{variables('Approval Manager')};@{outputs('Get_manager_(V2)')?['body/userPrincipalName']};",
+                          "ApprovalCreationInput/details": "Visit date : @{variables('Visit Date')}\n\nJustification : @{variables('Justification')}\n\nRespect of sanitary rules  :  @{variables('Sanitary rules')}\n",
+                          "ApprovalCreationInput/enableNotifications": true,
+                          "ApprovalCreationInput/enableReassignment": true
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "Set_approval_ID_to_Sales": {
+                      "runAfter": {
+                        "Customer_sales_approval": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "Approval ID",
+                        "value": "@outputs('Customer_sales_approval')?['body/name']"
+                      }
+                    }
+                  }
+                },
+                "Customer_Visit__-_Consulting": {
+                  "case": "Consulting",
+                  "actions": {
+                    "Customer_Consulting_approval": {
+                      "runAfter": {},
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_approvals_1",
+                          "operationId": "CreateAnApproval",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+                        },
+                        "parameters": {
+                          "approvalType": "Basic",
+                          "ApprovalCreationInput/title": "Work at a customer site (Consulting)",
+                          "ApprovalCreationInput/assignedTo": "@{variables('Approval Manager')}; @{outputs('Get_manager_(V2)')?['body/userPrincipalName']};",
+                          "ApprovalCreationInput/details": "Visit date : @{variables('Visit Date')}\n\nJustification : @{variables('Justification')}\n\nRespect of sanitary rules  :  @{variables('Sanitary rules')}\n",
+                          "ApprovalCreationInput/enableNotifications": true,
+                          "ApprovalCreationInput/enableReassignment": true
+                        },
+                        "authentication": "@parameters('$authentication')"
+                      }
+                    },
+                    "Set_approval_ID_to_Consulting": {
+                      "runAfter": {
+                        "Customer_Consulting_approval": [
+                          "Succeeded"
+                        ]
+                      },
+                      "type": "SetVariable",
+                      "inputs": {
+                        "name": "Approval ID",
+                        "value": "@outputs('Customer_Consulting_approval')?['body/name']"
+                      }
+                    }
+                  }
+                }
+              },
+              "default": {
+                "actions": {
+                  "Terminate": {
+                    "runAfter": {},
+                    "type": "Terminate",
+                    "inputs": {
+                      "runStatus": "Failed"
+                    }
+                  }
+                }
+              },
+              "expression": "@variables('Approval Type')",
+              "type": "Switch"
+            }
+          },
+          "runAfter": {
+            "Approval_ID": [
+              "Succeeded"
+            ]
+          },
+          "type": "Scope"
+        },
+        "Visit_date": {
+          "runAfter": {
+            "Approval_Type": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Visit Date",
+                "type": "string",
+                "value": "@triggerBody()['date']"
+              }
+            ]
+          }
+        },
+        "Requestor": {
+          "runAfter": {
+            "Sanitary_rules": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Requestor",
+                "type": "string",
+                "value": "@triggerBody()['email']"
+              }
+            ]
+          }
+        },
+        "Justification": {
+          "runAfter": {
+            "Visit_date": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Justification",
+                "type": "string",
+                "value": "@triggerBody()['text_2']"
+              }
+            ]
+          }
+        },
+        "Reason": {
+          "runAfter": {
+            "Requestor": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Reason",
+                "type": "string",
+                "value": "@triggerBody()['text']"
+              }
+            ]
+          }
+        },
+        "Approval_ID": {
+          "runAfter": {
+            "Approval_Manager": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Approval ID",
+                "type": "string",
+                "value": "@triggerBody()['text_3']"
+              }
+            ]
+          }
+        },
+        "Catch": {
+          "actions": {
+            "Send_me_an_email_notification": {
+              "runAfter": {},
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_flowpush_1",
+                  "operationId": "SendEmailNotification",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_flowpush"
+                },
+                "parameters": {
+                  "NotificationEmailDefinition/notificationSubject": "Technical Error : Approval for Covid visit ( visit tyoe ; @{variables('Approval Type')}) failed",
+                  "NotificationEmailDefinition/notificationBody": "There was a technical issue during the approval of your request. Please contact your manager directly to get this approval, while we investigate the issue."
+                },
+                "authentication": "@parameters('$authentication')"
+              },
+              "description": "Sends a notification to the user that triggered the flow"
+            }
+          },
+          "runAfter": {
+            "Try": [
+              "Failed"
+            ]
+          },
+          "type": "Scope"
+        },
+        "Sanitary_rules": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Sanitary rules",
+                "type": "boolean",
+                "value": "@triggerBody()['boolean']"
+              }
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}

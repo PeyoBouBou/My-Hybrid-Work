@@ -1,0 +1,459 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_office365": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_office365"
+        }
+      },
+      "shared_approvals": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_approvals"
+        }
+      },
+      "shared_flowpush": {
+        "runtimeSource": "invoker",
+        "connection": {},
+        "api": {
+          "name": "shared_flowpush"
+        }
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "PowerApp",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "RequestorEmail_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "VisitDate_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "Justification_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "Attendees_Value": {
+                  "type": "string",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                },
+                "NumberofAttendees_Value": {
+                  "type": "integer",
+                  "description": "Enter initial value",
+                  "x-ms-powerflows-param-ispartial": false
+                }
+              },
+              "required": [
+                "RequestorEmail_Value",
+                "VisitDate_Value",
+                "Justification_Value",
+                "Attendees_Value",
+                "NumberofAttendees_Value"
+              ]
+            }
+          }
+        }
+      },
+      "actions": {
+        "Try": {
+          "actions": {
+            "Condition": {
+              "actions": {
+                "Apply_to_each": {
+                  "foreach": "@outputs('Wait_for_an_approval')?['body/responses']",
+                  "actions": {
+                    "Send_an_email_(V2)": {
+                      "runAfter": {},
+                      "type": "OpenApiConnection",
+                      "inputs": {
+                        "host": {
+                          "connectionName": "shared_office365",
+                          "operationId": "SendEmailV2",
+                          "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                        },
+                        "parameters": {
+                          "emailMessage/To": "@variables('Requestor Email')",
+                          "emailMessage/Subject": "My Hybrid Work - Team Meeting request APPROVED",
+                          "emailMessage/Body": "<p>Your request was approved by @{items('Apply_to_each')?['responder/displayName']}<br>\nComments : @{items('Apply_to_each')?['comments']}<br>\n--------<br>\n<strong>Request : </strong><strong>@{outputs('Wait_for_an_approval')?['body/title']}</strong><strong><br>\nVisit Date : </strong>@{variables('Visit Date')}<br>\n<strong>Justification :</strong> @{variables('Justification')}<br>\n<strong>Attendees :</strong> @{body('Create_HTML_table_from_attendees')}</p>",
+                          "emailMessage/Cc": "@items('Apply_to_each')?['responder/email']"
+                        },
+                        "authentication": {
+                          "type": "Raw",
+                          "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                        }
+                      }
+                    }
+                  },
+                  "runAfter": {},
+                  "type": "Foreach"
+                }
+              },
+              "runAfter": {
+                "Wait_for_an_approval": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Apply_to_each_2": {
+                    "foreach": "@outputs('Wait_for_an_approval')?['body/responses']",
+                    "actions": {
+                      "Send_an_email_(V2)_2": {
+                        "runAfter": {},
+                        "type": "OpenApiConnection",
+                        "inputs": {
+                          "host": {
+                            "connectionName": "shared_office365",
+                            "operationId": "SendEmailV2",
+                            "apiId": "/providers/Microsoft.PowerApps/apis/shared_office365"
+                          },
+                          "parameters": {
+                            "emailMessage/To": "@variables('Requestor Email')",
+                            "emailMessage/Subject": "My Hybrid Work - Team Meeting request REJECTED",
+                            "emailMessage/Body": "<p>Your request was rejected by @{items('Apply_to_each_2')?['responder/displayName']}<br>\nComments : @{items('Apply_to_each_2')?['comments']}<br>\n--------<br>\n<strong>Request : </strong>@{outputs('Wait_for_an_approval')?['body/title']}<br>\n<strong>Visit Date :</strong> @{variables('Visit Date')}<br>\n<strong>Justification :</strong> @{variables('Justification')}<br>\nAttendees : @{body('Create_HTML_table_from_attendees')}</p>",
+                            "emailMessage/Cc": "@items('Apply_to_each_2')?['responder/email']"
+                          },
+                          "authentication": {
+                            "type": "Raw",
+                            "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                          }
+                        }
+                      }
+                    },
+                    "runAfter": {},
+                    "type": "Foreach"
+                  }
+                }
+              },
+              "expression": {
+                "equals": [
+                  "@outputs('Wait_for_an_approval')?['body/outcome']",
+                  "Approve"
+                ]
+              },
+              "type": "If"
+            },
+            "Wait_for_an_approval": {
+              "runAfter": {
+                "Create_an_approval": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnectionWebhook",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_approvals",
+                  "operationId": "WaitForAnApproval",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+                },
+                "parameters": {
+                  "approvalName": "@outputs('Create_an_approval')?['body/name']"
+                },
+                "authentication": {
+                  "type": "Raw",
+                  "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                }
+              }
+            },
+            "Create_an_approval": {
+              "runAfter": {
+                "Create_HTML_table_from_attendees": [
+                  "Succeeded"
+                ]
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_approvals",
+                  "operationId": "CreateAnApproval",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_approvals"
+                },
+                "parameters": {
+                  "approvalType": "Basic",
+                  "ApprovalCreationInput/title": "COVID Team meeting request",
+                  "ApprovalCreationInput/assignedTo": "v-epinda@microsoft.com; julien.cambournac@microsoft.com; visegui@microsoft.com",
+                  "ApprovalCreationInput/details": "Team meeting date : @{variables('Visit Date')}\nNumber of Attendees : @{variables('Number of Attendees')}\nJustification : @{variables('Justification')}\n@{variables('Attendees Markdown')}",
+                  "ApprovalCreationInput/requestor": "@{variables('Requestor Email')};",
+                  "ApprovalCreationInput/enableNotifications": true,
+                  "ApprovalCreationInput/enableReassignment": true
+                },
+                "authentication": {
+                  "type": "Raw",
+                  "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                }
+              }
+            },
+            "Parse_JSON": {
+              "runAfter": {},
+              "type": "ParseJson",
+              "inputs": {
+                "content": "@variables('Attendees')",
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "DisplayName": {
+                        "type": "string"
+                      },
+                      "Id": {
+                        "type": "string"
+                      },
+                      "JobTitle": {
+                        "type": "string"
+                      },
+                      "Mail": {
+                        "type": "string"
+                      },
+                      "UserPrincipalName": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "DisplayName",
+                      "Id",
+                      "UserPrincipalName"
+                    ]
+                  }
+                }
+              }
+            },
+            "Create_HTML_table_from_attendees": {
+              "runAfter": {
+                "Apply_to_each_Attendee": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Table",
+              "inputs": {
+                "from": "@body('Parse_JSON')",
+                "format": "HTML",
+                "columns": [
+                  {
+                    "header": "Name",
+                    "value": "@item()['DisplayName']"
+                  },
+                  {
+                    "header": "Job Title",
+                    "value": "@item()['JobTitle']"
+                  },
+                  {
+                    "header": "Email",
+                    "value": "@item()['Mail']"
+                  },
+                  {
+                    "header": "Alias",
+                    "value": "@item()['UserPrincipalName']"
+                  }
+                ]
+              }
+            },
+            "Apply_to_each_Attendee": {
+              "foreach": "@body('Parse_JSON')",
+              "actions": {
+                "Compose": {
+                  "runAfter": {},
+                  "type": "Compose",
+                  "inputs": "| @{items('Apply_to_each_Attendee')['DisplayName']} | \n"
+                },
+                "Append_to_string_variable": {
+                  "runAfter": {
+                    "Compose": [
+                      "Succeeded"
+                    ]
+                  },
+                  "type": "AppendToStringVariable",
+                  "inputs": {
+                    "name": "Attendees Markdown",
+                    "value": "@outputs('Compose')"
+                  }
+                }
+              },
+              "runAfter": {
+                "Parse_JSON": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Foreach"
+            }
+          },
+          "runAfter": {
+            "Number_of_Attendees": [
+              "Succeeded"
+            ]
+          },
+          "type": "Scope"
+        },
+        "Requestor_Email": {
+          "runAfter": {},
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Requestor Email",
+                "type": "string",
+                "value": "@triggerBody()['RequestorEmail_Value']"
+              }
+            ]
+          }
+        },
+        "Visit_Date": {
+          "runAfter": {
+            "Requestor_Email": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Visit Date",
+                "type": "string",
+                "value": "@triggerBody()['VisitDate_Value']"
+              }
+            ]
+          }
+        },
+        "Justification": {
+          "runAfter": {
+            "Visit_Date": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Justification",
+                "type": "string",
+                "value": "@triggerBody()['Justification_Value']"
+              }
+            ]
+          }
+        },
+        "Attendees": {
+          "runAfter": {
+            "Justification": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Attendees",
+                "type": "string",
+                "value": "@triggerBody()['Attendees_Value']"
+              }
+            ]
+          }
+        },
+        "Catch": {
+          "actions": {
+            "Send_me_an_email_notification": {
+              "runAfter": {},
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_flowpush",
+                  "operationId": "SendEmailNotification",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_flowpush"
+                },
+                "parameters": {
+                  "NotificationEmailDefinition/notificationSubject": "Technical Error : Approval for Team Meeting",
+                  "NotificationEmailDefinition/notificationBody": "There was a technical issue during the approval of your request. Please contact your manager directly to get this approval, while we investigate the issue."
+                },
+                "authentication": {
+                  "type": "Raw",
+                  "value": "@json(decodeBase64(triggerOutputs().headers['X-MS-APIM-Tokens']))['$ConnectionKey']"
+                }
+              }
+            },
+            "Terminate": {
+              "runAfter": {
+                "Send_me_an_email_notification": [
+                  "Succeeded"
+                ]
+              },
+              "type": "Terminate",
+              "inputs": {
+                "runStatus": "Failed"
+              }
+            }
+          },
+          "runAfter": {
+            "Try": [
+              "Failed",
+              "Skipped"
+            ]
+          },
+          "type": "Scope"
+        },
+        "Number_of_Attendees": {
+          "runAfter": {
+            "Attendees_Markdown": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Number of Attendees",
+                "type": "integer",
+                "value": "@triggerBody()['NumberofAttendees_Value']"
+              }
+            ]
+          }
+        },
+        "Attendees_Markdown": {
+          "runAfter": {
+            "Attendees": [
+              "Succeeded"
+            ]
+          },
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "Attendees Markdown",
+                "type": "string",
+                "value": "| Attendees Names |\n| --- |\n"
+              }
+            ]
+          }
+        }
+      },
+      "outputs": {}
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
